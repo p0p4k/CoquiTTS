@@ -77,3 +77,10 @@ def get_length_balancer_weights(items: list, num_buckets=10):
     # normalize
     dataset_samples_weight = dataset_samples_weight / np.linalg.norm(dataset_samples_weight)
     return torch.from_numpy(dataset_samples_weight).float()
+
+def parse_aux_input_dict(aux_input, field, dim_chk=0):
+    if field in aux_input and aux_input[field] is not None:
+        field_id = aux_input[field]
+        if field_id.ndim == dim_chk:
+            field_id = field_id.unsqueeze_(0)
+    return None

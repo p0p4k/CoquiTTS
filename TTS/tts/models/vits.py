@@ -13,7 +13,7 @@ from librosa.filters import mel as librosa_mel_fn
 from torch import nn
 from torch.cuda.amp.autocast_mode import autocast
 from torch.nn import functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, parse_aux_input_dict
 from torch.utils.data.sampler import WeightedRandomSampler
 from trainer.torch import DistributedSampler, DistributedSamplerWrapper
 from trainer.trainer_utils import get_optimizer, get_scheduler
@@ -873,22 +873,15 @@ class Vits(BaseTTS):
     def _set_cond_input(aux_input: Dict):
         """Set the speaker conditioning input based on the multi-speaker mode."""
         sid, g, lid, durations = None, None, None, None
-        if "speaker_ids" in aux_input and aux_input["speaker_ids"] is not None:
-            sid = aux_input["speaker_ids"]
-            if sid.ndim == 0:
-                sid = sid.unsqueeze_(0)
+        sid = parse_aux_input_dict("speaker_ids",0)
+        
         if "d_vectors" in aux_input and aux_input["d_vectors"] is not None:
             g = F.normalize(aux_input["d_vectors"]).unsqueeze(-1)
             if g.ndim == 2:
                 g = g.unsqueeze_(0)
 
-        if "language_ids" in aux_input and aux_input["language_ids"] is not None:
-            lid = aux_input["language_ids"]
-            if lid.ndim == 0:
-                lid = lid.unsqueeze_(0)
-
-        if "durations" in aux_input and aux_input["durations"] is not None:
-            durations = aux_input["durations"]
+        lid = parse_aux_input_dict("language_ids",0)
+        durations = parse_aux_input_dict("durations",0)
 
         return sid, g, lid, durations
 
@@ -1393,6 +1386,11 @@ class Vits(BaseTTS):
                 text, speaker_name, style_wav = sentence_info
             elif len(sentence_info) == 4:
                 text, speaker_name, style_wav, language_name = sentence_info
+        elif isinstance(sentence_info, dict):
+            text = sentence_info["text"]
+            speaker_name = sentence_info.get("speaker_name", None)
+            style_wav = sentence_info.get("style_wav", None)
+            language_name = sentence_info.get("language_name", None)
         else:
             text = sentence_info
 
